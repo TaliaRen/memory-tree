@@ -84,6 +84,27 @@
   }
   #music-btn.muted { color: rgba(245,230,200,0.45); border-color: rgba(255,215,120,0.1); }
 
+  #share-btn {
+    position: fixed;
+    top: 18px; right: 130px;
+    z-index: 100;
+    background: rgba(10,10,14,0.55);
+    border: 1px solid rgba(255,215,120,0.25);
+    border-radius: 12px;
+    padding: 10px 16px;
+    backdrop-filter: blur(10px);
+    color: #ffe9b0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px; font-weight: 600; letter-spacing: .5px;
+    box-shadow: 0 0 24px rgba(0,0,0,0.3);
+    cursor: pointer;
+    display: none; align-items: center; gap: 7px;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+  }
+  #share-btn:hover { background: rgba(20,20,28,0.72); border-color: rgba(255,215,120,0.5); }
+  #share-btn.copied { color: #7dff9a; border-color: rgba(125,255,154,0.4); }
+
   /* Upload screen */
   #upload-screen {
     position: fixed; inset: 0; z-index: 1100;
@@ -191,6 +212,8 @@
 </div>
 
 <audio id="bg-music" src="christmas music.mp3" loop preload="auto"></audio>
+
+<button id="share-btn" title="Share this tree">🔗 Share</button>
 
 <button id="music-btn" title="Toggle music">
   <span id="music-icon">♪</span> Music
@@ -892,9 +915,91 @@ async function init() {
   // Auto-play music (needs user interaction first on some browsers;
   // we try immediately after the loading screen gesture which counts)
   setMusic(true);
-
   animate();
+
+  // Reveal share button now that photos are loaded
+  document.getElementById('share-btn').style.display = 'flex';
 }
+
+// ─── Share / URL encoding ────────────────────────────────────────
+// Photos are compressed to small JPEGs and stored in the URL hash so the
+// link is entirely self-contained — no server or storage service needed.
+const HASH_PREFIX = '#p=';
+let shareDataUrls = []; // compressed data URLs saved when photos are loaded
+
+async function compressToDataUrl(source, maxPx = 280, quality = 0.62) {
+  // source can be a File or an HTMLImageElement already loaded
+  return new Promise(resolve => {
+    const process = img => {
+      const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
+      const w = Math.round(img.naturalWidth  * ratio);
+      const h = Math.round(img.naturalHeight * ratio);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    if (source instanceof File) {
+      const url = URL.createObjectURL(source);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); process(img); };
+      img.onerror  = () => resolve(null);
+      img.src = url;
+    } else {
+      process(source); // already an HTMLImageElement
+    }
+  });
+}
+
+function buildShareURL() {
+  // Strip the redundant data:image/jpeg;base64, prefix to save ~30 chars each
+  const parts = shareDataUrls.map(d => d.replace(/^data:image\/jpeg;base64,/, ''));
+  const hash  = HASH_PREFIX + encodeURIComponent(JSON.stringify(parts));
+  return location.origin + location.pathname + hash;
+}
+
+function parseSharedPhotos() {
+  if (!location.hash.startsWith(HASH_PREFIX)) return null;
+  try {
+    const raw   = decodeURIComponent(location.hash.slice(HASH_PREFIX.length));
+    const parts = JSON.parse(raw);
+    if (!Array.isArray(parts) || !parts.length) return null;
+    return parts.map(p => 'data:image/jpeg;base64,' + p);
+  } catch { return null; }
+}
+
+async function loadDataUrls(dataUrls) {
+  TOTAL_PHOTOS = dataUrls.length;
+  shareDataUrls = dataUrls; // already compressed — reuse for share URL
+  for (const dataUrl of dataUrls) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload  = () => { addPhotoSpriteFromTex(makeRoundedPhotoTex(img), 1); resolve(); };
+      img.onerror = resolve;
+      img.src = dataUrl;
+    });
+  }
+}
+
+// Share button
+const shareBtn = document.getElementById('share-btn');
+shareBtn.addEventListener('click', async () => {
+  const url = buildShareURL();
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    // Fallback: select a temp input
+    const inp = document.createElement('input');
+    inp.value = url; document.body.appendChild(inp);
+    inp.select(); document.execCommand('copy'); inp.remove();
+  }
+  shareBtn.textContent = '✓ Copied!';
+  shareBtn.classList.add('copied');
+  setTimeout(() => {
+    shareBtn.textContent = '🔗 Share';
+    shareBtn.classList.remove('copied');
+  }, 2200);
+});
 
 // ─── Upload screen ───────────────────────────────────────────────
 function showUploadScreen() {
@@ -936,17 +1041,18 @@ function showUploadScreen() {
     startBtn.disabled = true;
     startBtn.textContent = 'Loading…';
 
-    // Set ring spacing based on how many photos the user uploaded
     TOTAL_PHOTOS = selectedFiles.length;
+    shareDataUrls = [];
 
-    // Load each file into a rounded texture then add to the scene
     for (const file of selectedFiles) {
       await new Promise(resolve => {
         const url = URL.createObjectURL(file);
         const img = new Image();
-        img.onload = () => {
-          const tex = makeRoundedPhotoTex(img);
-          addPhotoSpriteFromTex(tex, 1);
+        img.onload = async () => {
+          addPhotoSpriteFromTex(makeRoundedPhotoTex(img), 1);
+          // Compress a small copy for the share URL
+          const compressed = await compressToDataUrl(img);
+          if (compressed) shareDataUrls.push(compressed);
           URL.revokeObjectURL(url);
           resolve();
         };
@@ -955,14 +1061,20 @@ function showUploadScreen() {
       });
     }
 
-    // Transition: upload screen out, then run main init
     screen.classList.add('out');
     setTimeout(() => screen.remove(), 450);
     init();
   });
 }
 
-showUploadScreen();
+// If opened via a share link, skip upload and load photos from the URL hash
+const sharedPhotos = parseSharedPhotos();
+if (sharedPhotos) {
+  document.getElementById('upload-screen').remove();
+  loadDataUrls(sharedPhotos).then(() => init());
+} else {
+  showUploadScreen();
+}
 </script>
 </body>
 </html>
