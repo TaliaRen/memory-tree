@@ -84,6 +84,67 @@
   }
   #music-btn.muted { color: rgba(245,230,200,0.45); border-color: rgba(255,215,120,0.1); }
 
+  /* Upload screen */
+  #upload-screen {
+    position: fixed; inset: 0; z-index: 1100;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.4s;
+  }
+  #upload-screen.out { opacity: 0; pointer-events: none; }
+  .upload-card {
+    background: rgba(10,10,14,0.88);
+    border: 1px solid rgba(255,215,120,0.28);
+    border-radius: 20px;
+    padding: 38px 42px;
+    backdrop-filter: blur(16px);
+    max-width: 460px; width: 90%;
+    text-align: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #f5e6c8;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+  .upload-title { font-size: 22px; font-weight: 700; color: #ffd700; margin-bottom: 8px; letter-spacing: .3px; }
+  .upload-sub { font-size: 13px; color: rgba(245,230,200,0.6); margin-bottom: 24px; line-height: 1.6; }
+  #drop-zone {
+    border: 2px dashed rgba(255,215,120,0.3);
+    border-radius: 14px;
+    padding: 30px 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 18px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  #drop-zone:hover, #drop-zone.drag-over {
+    border-color: rgba(255,215,120,0.65);
+    background: rgba(255,215,120,0.04);
+  }
+  .drop-icon { font-size: 34px; }
+  .drop-text { font-size: 13.5px; color: #ffe9b0; }
+  .drop-hint { font-size: 11px; color: rgba(245,230,200,0.4); }
+  #thumb-row {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; margin-bottom: 22px;
+  }
+  #thumb-row img {
+    width: 58px; height: 58px; object-fit: cover;
+    border-radius: 8px; border: 1px solid rgba(255,215,120,0.28);
+  }
+  #start-btn {
+    width: 100%;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,120,0.45);
+    border-radius: 11px;
+    color: #ffd700;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px; font-weight: 600; letter-spacing: .4px;
+    padding: 13px 0;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  #start-btn:hover:not(:disabled) { background: rgba(255,215,0,0.2); border-color: rgba(255,215,120,0.75); }
+  #start-btn:disabled { opacity: 0.3; cursor: default; }
+
   /* Loading */
   #loading {
     position: fixed; inset: 0;
@@ -102,12 +163,21 @@
 </style>
 </head>
 <body>
-<script>
-  // Auto-redirect from file:// to local server where photos can load
-  if (location.protocol === 'file:') {
-    location.replace('http://localhost:8934/');
-  }
-</script>
+
+<div id="upload-screen">
+  <div class="upload-card">
+    <div class="upload-title">🎄 Christmas Memory Tree</div>
+    <p class="upload-sub">Upload your photos to decorate the tree</p>
+    <div id="drop-zone">
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+      <span class="drop-icon">📷</span>
+      <span class="drop-text">Click to select photos or drag &amp; drop</span>
+      <span class="drop-hint">JPG · PNG · HEIC — any number of photos</span>
+    </div>
+    <div id="thumb-row"></div>
+    <button id="start-btn" disabled>✨ Decorate the Tree</button>
+  </div>
+</div>
 
 <div id="loading">
   <span>🎄</span>
@@ -153,11 +223,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-// ─── Photo files (same folder as index.html) ─────────────────────
-const PHOTO_FILES = [
-  '1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg',
-  '7.jpg','8.jpg','9.jpg','10.jpg','11.jpg',
-];
 
 // ─── Config ────────────────────────────────────────────────────
 const N       = 3000; // particle count
@@ -424,7 +489,7 @@ function makeRoundedPhotoTex(img) {
 // ─── Photos ──────────────────────────────────────────────────────
 const PHOTOS = [];
 let photoCount = 0;
-const TOTAL_PHOTOS = PHOTO_FILES.length;
+let TOTAL_PHOTOS = 1; // set dynamically from user upload
 
 // Ring placement: evenly spread angles, scrambled heights, inside tree volume
 function ringTreePos() {
@@ -455,18 +520,7 @@ function addPhotoSpriteFromTex(tex, aspect) {
   });
 }
 
-const tLoader = new THREE.TextureLoader();
-PHOTO_FILES.forEach((f) => {
-  tLoader.load(
-    f,
-    (tex) => {
-      const roundedTex = makeRoundedPhotoTex(tex.image);
-      addPhotoSpriteFromTex(roundedTex, 1); // square after crop
-    },
-    undefined,
-    () => console.warn(`[Photo] Could not load: ${f}`)
-  );
-});
+// Photos are loaded dynamically from user upload — see showUploadScreen()
 
 // ─── State machine ───────────────────────────────────────────────
 let state      = 'tree'; // 'tree' | 'scattered' | 'focused'
@@ -842,7 +896,73 @@ async function init() {
   animate();
 }
 
-init();
+// ─── Upload screen ───────────────────────────────────────────────
+function showUploadScreen() {
+  const screen   = document.getElementById('upload-screen');
+  const fileInput = document.getElementById('file-input');
+  const dropZone  = document.getElementById('drop-zone');
+  const thumbRow  = document.getElementById('thumb-row');
+  const startBtn  = document.getElementById('start-btn');
+  let selectedFiles = [];
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', e => {
+    selectedFiles = [...e.target.files].filter(f => f.type.startsWith('image/'));
+    renderThumbs();
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    selectedFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    renderThumbs();
+  });
+
+  function renderThumbs() {
+    thumbRow.innerHTML = '';
+    selectedFiles.forEach(f => {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      thumbRow.appendChild(img);
+    });
+    startBtn.disabled = selectedFiles.length === 0;
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (!selectedFiles.length) return;
+    startBtn.disabled = true;
+    startBtn.textContent = 'Loading…';
+
+    // Set ring spacing based on how many photos the user uploaded
+    TOTAL_PHOTOS = selectedFiles.length;
+
+    // Load each file into a rounded texture then add to the scene
+    for (const file of selectedFiles) {
+      await new Promise(resolve => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const tex = makeRoundedPhotoTex(img);
+          addPhotoSpriteFromTex(tex, 1);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = resolve;
+        img.src = url;
+      });
+    }
+
+    // Transition: upload screen out, then run main init
+    screen.classList.add('out');
+    setTimeout(() => screen.remove(), 450);
+    init();
+  });
+}
+
+showUploadScreen();
 </script>
 </body>
 </html>
