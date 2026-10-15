@@ -2,10 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Christmas Tree Particle Interaction</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --acc: 255,215,120;
+    --acc-hi: 255,200,60;
+    --text: #f5e6c8;
+    --sans: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif;
+  }
+  :root[data-season="spring"] { --acc: 255,178,206; --acc-hi: 255,138,184; }
+  :root[data-season="summer"] { --acc: 172,232,150; --acc-hi: 128,220,104; }
+  :root[data-season="autumn"] { --acc: 255,168,98;  --acc-hi: 255,118,52;  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; }
+  body { background: #000; overflow: hidden; font-family: var(--sans); }
+
+  body.pre #gesture-panel, body.pre #music-btn, body.pre #cam-preview { display: none; }
 
   #camera-feed { display: none; }
 
@@ -13,7 +29,7 @@
     position: fixed;
     bottom: 16px; right: 16px;
     width: 140px; height: 105px;
-    border: 1px solid rgba(255,200,50,0.25);
+    border: 1px solid rgba(var(--acc),0.25);
     border-radius: 8px;
     overflow: hidden;
     opacity: 0.65;
@@ -25,203 +41,322 @@
     transform: scaleX(-1);
   }
 
-  /* Gesture status panel — top left, English */
+  .glass {
+    background: rgba(10,10,14,0.55);
+    border: 1px solid rgba(var(--acc),0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 0 24px rgba(0,0,0,0.3);
+    transition: border-color .4s, background .2s, color .4s;
+  }
+
   #gesture-panel {
     position: fixed;
     top: 18px; left: 18px;
     z-index: 100;
     min-width: 230px;
-    background: rgba(10,10,14,0.55);
-    border: 1px solid rgba(255,215,120,0.25);
     border-radius: 12px;
     padding: 14px 18px;
-    backdrop-filter: blur(10px);
-    color: #f5e6c8;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    box-shadow: 0 0 24px rgba(0,0,0,0.3);
+    color: var(--text);
   }
   #gesture-panel .gp-current {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .5px;
+    font-size: 13px; font-weight: 600; letter-spacing: .5px;
     margin-bottom: 10px;
-    color: #ffe9b0;
+    color: rgba(var(--acc),1);
   }
-  #gesture-panel .gp-current span { color: #ffd700; }
+  #gesture-panel .gp-current span { color: rgb(var(--acc-hi)); }
   #gesture-panel .gp-legend {
     font-size: 11.5px;
     line-height: 1.9;
     color: rgba(245,230,200,0.75);
-    border-top: 1px solid rgba(255,215,120,0.15);
+    border-top: 1px solid rgba(var(--acc),0.15);
     padding-top: 8px;
   }
 
-  #music-btn {
+  #top-actions {
     position: fixed;
     top: 18px; right: 18px;
-    z-index: 100;
-    background: rgba(10,10,14,0.55);
-    border: 1px solid rgba(255,215,120,0.25);
+    z-index: 110;
+    display: flex; gap: 8px;
+  }
+  body.pre #top-actions { display: none; }
+  .top-btn {
+    height: 40px;
     border-radius: 12px;
-    padding: 10px 16px;
-    backdrop-filter: blur(10px);
-    color: #ffe9b0;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .5px;
-    box-shadow: 0 0 24px rgba(0,0,0,0.3);
+    padding: 0 15px 0 13px;
+    color: rgb(var(--acc));
+    font: 600 13px var(--sans);
+    letter-spacing: .2px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    transition: border-color 0.2s, background 0.2s;
+    display: flex; align-items: center; gap: 8px;
     user-select: none;
   }
-  #music-btn:hover {
-    background: rgba(20,20,28,0.72);
-    border-color: rgba(255,215,120,0.5);
-  }
-  #music-btn.muted { color: rgba(245,230,200,0.45); border-color: rgba(255,215,120,0.1); }
+  .top-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .top-btn:hover, .top-btn.active { background: rgba(20,20,28,0.78); border-color: rgba(var(--acc),0.55); }
+  .top-btn.active { box-shadow: 0 0 0 3px rgba(var(--acc),0.12), 0 0 24px rgba(0,0,0,0.3); }
+  #music-btn .ic-off { display: none; }
+  #music-btn.muted { color: rgba(245,230,200,0.45); border-color: rgba(var(--acc),0.12); }
+  #music-btn.muted .ic-on { display: none; }
+  #music-btn.muted .ic-off { display: block; }
 
-  #share-btn {
+  /* Share panel */
+  #share-panel {
     position: fixed;
-    top: 18px; right: 130px;
-    z-index: 100;
-    background: rgba(10,10,14,0.55);
-    border: 1px solid rgba(255,215,120,0.25);
-    border-radius: 12px;
-    padding: 10px 16px;
-    backdrop-filter: blur(10px);
-    color: #ffe9b0;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 13px; font-weight: 600; letter-spacing: .5px;
-    box-shadow: 0 0 24px rgba(0,0,0,0.3);
-    cursor: pointer;
-    display: none; align-items: center; gap: 7px;
-    transition: border-color 0.2s, background 0.2s;
-    user-select: none;
+    top: 68px; right: 18px;
+    z-index: 120;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    padding: 18px 18px 16px;
+    background: rgba(14,11,15,0.94);
+    border: 1px solid rgba(var(--acc),0.25);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+    color: var(--text);
+    font-family: var(--sans);
+    transform-origin: top right;
+    animation: panel-in .22s cubic-bezier(.2,.9,.3,1.2);
   }
-  #share-btn:hover { background: rgba(20,20,28,0.72); border-color: rgba(255,215,120,0.5); }
-  #share-btn.copied { color: #7dff9a; border-color: rgba(125,255,154,0.4); }
+  #share-panel[hidden] { display: none; }
+  @keyframes panel-in { from { opacity: 0; transform: translateY(-6px) scale(.96); } to { opacity: 1; transform: none; } }
+  .sp-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .sp-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; font-weight: 600;
+    font-size: 24px; line-height: 1.1;
+    color: #fff4e2;
+  }
+  .sp-close {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(245,230,200,0.6);
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .sp-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .sp-stack { display: flex; align-items: center; margin-bottom: 16px; padding-left: 6px; }
+  .sp-stack img, .sp-stack .more {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    object-fit: cover;
+    margin-left: -8px;
+    border: 2px solid rgb(14,11,15);
+    box-shadow: 0 0 0 1px rgba(var(--acc),0.35);
+    background: rgba(var(--acc),0.12);
+  }
+  .sp-stack img:nth-child(odd) { transform: rotate(-4deg); }
+  .sp-stack img:nth-child(even) { transform: rotate(3deg) translateY(2px); }
+  .sp-stack .more {
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 600;
+    color: rgb(var(--acc));
+  }
+  .sp-link {
+    display: flex; align-items: center; gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 12.5px;
+    color: rgba(245,230,200,0.7);
+    margin-bottom: 10px;
+  }
+  .sp-link svg { color: rgb(var(--acc)); flex-shrink: 0; }
+  .sp-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-btn {
+    width: 100%; height: 44px;
+    border-radius: 12px;
+    font: 600 14px var(--sans);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .sp-btn svg { width: 16px; height: 16px; }
+  #sp-copy {
+    border: 0;
+    background: linear-gradient(135deg, rgb(var(--acc-hi)), rgb(var(--acc)));
+    color: #1b130a;
+    box-shadow: 0 8px 24px rgba(var(--acc),0.25);
+  }
+  #sp-copy:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(var(--acc),0.38); }
+  #sp-copy .ic-done { display: none; }
+  #sp-copy.done .ic-copy { display: none; }
+  #sp-copy.done .ic-done { display: block; animation: pop .3s ease-out; }
+
+  /* Season switcher */
+  #season-bar {
+    position: fixed;
+    bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 1200;
+    display: flex; gap: 2px;
+    padding: 5px;
+    border-radius: 999px;
+  }
+  .season-opt {
+    border: 0; background: transparent;
+    color: rgba(245,230,200,0.55);
+    font: 500 12.5px/1 var(--sans);
+    padding: 9px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: color .3s, background .3s, box-shadow .3s;
+  }
+  .season-opt:hover { color: var(--text); }
+  .season-opt.active {
+    background: rgba(var(--acc),0.16);
+    color: rgb(var(--acc));
+    box-shadow: inset 0 0 0 1px rgba(var(--acc),0.45);
+  }
+  .season-opt .si { font-size: 14px; }
 
   /* Upload screen */
   #upload-screen {
     position: fixed; inset: 0; z-index: 1100;
-    background: #000;
-    display: flex; align-items: center; justify-content: center;
-    transition: opacity 0.4s;
+    display: flex; align-items: center;
+    padding: 24px clamp(16px, 5vw, 72px);
+    background: linear-gradient(90deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.3) 42%, rgba(0,0,0,0) 65%);
+    transition: opacity .6s;
   }
   #upload-screen.out { opacity: 0; pointer-events: none; }
   .upload-card {
-    background: rgba(10,10,14,0.88);
-    border: 1px solid rgba(255,215,120,0.28);
-    border-radius: 20px;
-    padding: 38px 42px;
-    backdrop-filter: blur(16px);
-    max-width: 460px; width: 90%;
-    text-align: center;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    color: #f5e6c8;
-    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    width: 100%; max-width: 440px;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    background: rgba(14,11,15,0.82);
+    border: 1px solid rgba(var(--acc),0.22);
+    border-radius: 22px;
+    padding: 30px 28px 26px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    color: var(--text);
+    transition: border-color .3s, box-shadow .3s;
   }
-  .upload-title { font-size: 22px; font-weight: 700; color: #ffd700; margin-bottom: 8px; letter-spacing: .3px; }
-  .upload-sub { font-size: 13px; color: rgba(245,230,200,0.6); margin-bottom: 24px; line-height: 1.6; }
-  #drop-zone {
-    border: 2px dashed rgba(255,215,120,0.3);
-    border-radius: 14px;
-    padding: 30px 20px;
+  #upload-screen.drag .upload-card {
+    border-color: rgba(var(--acc),.85);
+    box-shadow: 0 0 0 4px rgba(var(--acc),.15), 0 30px 80px rgba(0,0,0,.45);
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .22em; text-transform: uppercase;
+    color: rgb(var(--acc));
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+    transition: color .4s;
+  }
+  .eyebrow::before { content: ''; width: 18px; height: 1px; background: currentColor; opacity: .7; }
+  .upload-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; font-weight: 500;
+    font-size: 40px; line-height: 1.02;
+    color: #fff4e2;
+    margin-bottom: 22px;
+  }
+  #photo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .slot {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 1px dashed rgba(var(--acc),.16);
+    background: rgba(255,255,255,.015);
+    position: relative;
     cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    margin-bottom: 18px;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: border-color .2s, background .2s;
   }
-  #drop-zone:hover, #drop-zone.drag-over {
-    border-color: rgba(255,215,120,0.65);
-    background: rgba(255,215,120,0.04);
+  .slot:hover { border-color: rgba(var(--acc),.4); }
+  .slot.add {
+    border-style: solid;
+    border-color: rgba(var(--acc),.45);
+    background: rgba(var(--acc),.08);
+    display: grid; place-items: center;
+    color: rgb(var(--acc));
   }
-  .drop-icon { font-size: 34px; }
-  .drop-text { font-size: 13.5px; color: #ffe9b0; }
-  .drop-hint { font-size: 11px; color: rgba(245,230,200,0.4); }
-  #thumb-row {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    justify-content: center; margin-bottom: 14px;
+  .slot.add:hover { background: rgba(var(--acc),.16); }
+  .slot.filled { border: 0; cursor: default; }
+  .slot.loading {
+    border: 0; cursor: default;
+    background: linear-gradient(100deg, rgba(var(--acc),.06) 30%, rgba(var(--acc),.18) 50%, rgba(var(--acc),.06) 70%);
+    background-size: 220% 100%;
+    animation: shimmer 1.1s linear infinite;
   }
-  .thumb-wrap { position: relative; width: 58px; height: 58px; flex-shrink: 0; }
-  .thumb-wrap img {
-    width: 100%; height: 100%; object-fit: cover;
-    border-radius: 8px; border: 1px solid rgba(255,215,120,0.28);
+  @keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+  .slot.filled img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
     display: block;
+    box-shadow: 0 0 0 1px rgba(var(--acc),.35), 0 0 14px rgba(var(--acc),.18);
   }
-  .thumb-del {
-    position: absolute; top: -6px; right: -6px;
-    width: 18px; height: 18px;
-    background: rgba(20,8,8,0.9);
-    border: 1px solid rgba(255,100,100,0.5);
+  .slot.filled img.new { animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .slot .del {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px;
     border-radius: 50%;
-    color: #ff9999; font-size: 13px; line-height: 1;
+    background: rgba(10,8,10,.78);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    display: grid; place-items: center;
     cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    padding: 0; transition: background 0.15s;
+    opacity: 0;
+    transition: opacity .15s, background .15s;
   }
-  .thumb-del:hover { background: rgba(180,40,40,0.85); color: #fff; }
-  #limit-msg {
-    display: none; color: #ff9966; font-size: 12px;
-    margin: -6px 0 10px; text-align: center;
+  .slot.filled:hover .del, .slot .del:focus-visible { opacity: 1; }
+  .slot .del:hover { background: rgba(190,50,50,.9); }
+  @media (hover: none) { .slot .del { opacity: 1; } }
+  .grid-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px;
+    color: rgba(245,230,200,.5);
+    margin-bottom: 18px;
+    min-height: 16px;
   }
+  .grid-meta .warn { color: #ffab7a; }
   #start-btn {
-    width: 100%;
-    background: rgba(255,215,0,0.1);
-    border: 1px solid rgba(255,215,120,0.45);
-    border-radius: 11px;
-    color: #ffd700;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 14px; font-weight: 600; letter-spacing: .4px;
-    padding: 13px 0;
+    width: 100%; height: 48px;
+    border: 0; border-radius: 14px;
+    background: linear-gradient(135deg, rgb(var(--acc-hi)), rgb(var(--acc)));
+    color: #1b130a;
+    font: 600 15px var(--sans);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
+    box-shadow: 0 8px 28px rgba(var(--acc),.28);
+    transition: transform .15s, box-shadow .2s, opacity .2s;
   }
-  #start-btn:hover:not(:disabled) { background: rgba(255,215,0,0.2); border-color: rgba(255,215,120,0.75); }
-  #start-btn:disabled { opacity: 0.3; cursor: default; }
+  #start-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 34px rgba(var(--acc),.42); }
+  #start-btn:disabled { opacity: .3; cursor: default; box-shadow: none; }
 
-  /* Loading */
-  #loading {
-    position: fixed; inset: 0;
-    background: #000;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 14px;
-    color: #ffd700;
-    z-index: 1000;
-    transition: opacity 0.8s;
+  @media (max-width: 760px) {
+    #upload-screen { justify-content: center; background: rgba(0,0,0,.45); padding-bottom: 80px; }
+    .upload-card { padding: 24px 20px 18px; }
+    .upload-title { font-size: 32px; }
+    #season-bar { left: 16px; transform: none; }
+    .season-opt .sl { display: none; }
+    .season-opt { padding: 9px 11px; }
   }
-  #loading.out { opacity: 0; pointer-events: none; }
-  #loading span { font-size: 60px; animation: p 1.5s ease-in-out infinite; }
-  #loading p { font-size: 13px; letter-spacing: 3px; color: rgba(255,215,0,0.7); font-family: Arial, sans-serif; }
-  @keyframes p { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.1);opacity:1} }
 </style>
 </head>
-<body>
+<body class="pre">
 
 <div id="upload-screen">
   <div class="upload-card">
-    <div class="upload-title">🎄 Christmas Memory Tree</div>
-    <p class="upload-sub">Upload your photos to decorate the tree</p>
-    <div id="drop-zone">
-      <input type="file" id="file-input" accept="image/*" multiple style="display:none">
-      <span class="drop-icon">📷</span>
-      <span class="drop-text">Click to select photos or drag &amp; drop</span>
-      <span class="drop-hint">JPG · PNG · HEIC — up to 15 photos</span>
-    </div>
-    <div id="thumb-row"></div>
-    <div id="limit-msg">Maximum 15 photos reached — please remove some first</div>
-    <button id="start-btn" disabled>✨ Decorate the Tree</button>
+    <div class="eyebrow" id="season-eyebrow">Memory Tree</div>
+    <h1 class="upload-title">Hang your memories<br>on the tree</h1>
+    <input type="file" id="file-input" accept="image/*,.heic,.heif" multiple hidden>
+    <div id="photo-grid"></div>
+    <div class="grid-meta"><span id="photo-count">0 / 15</span><span>JPG / PNG</span></div>
+    <button id="start-btn" disabled>
+      Grow my tree
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   </div>
-</div>
-
-<div id="loading">
-  <span>🎄</span>
-  <p>LOADING CHRISTMAS MAGIC…</p>
 </div>
 
 <video id="camera-feed" autoplay playsinline muted></video>
@@ -230,15 +365,44 @@
   <video id="cam-mirror" autoplay playsinline muted></video>
 </div>
 
-<audio id="bg-music" src="christmas music.mp3" loop preload="auto"></audio>
+<audio id="bg-music" src="music.mp3" loop preload="auto"></audio>
 
-<button id="share-btn" title="Share this tree">🔗 Share</button>
+<div id="top-actions">
+  <button id="share-btn" class="top-btn glass" aria-haspopup="dialog" aria-expanded="false">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="3.5" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12.5" r="2"/><path d="M5.8 7l4.4-2.5M5.8 9l4.4 2.5"/></svg>
+    <span>Share</span>
+  </button>
+  <button id="music-btn" class="top-btn glass" title="Toggle music">
+    <svg class="ic-on" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12V3.5l7-1.5v8.5"/><circle cx="4.3" cy="12" r="1.8"/><circle cx="11.3" cy="10.5" r="1.8"/></svg>
+    <svg class="ic-off" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12V3.5l7-1.5v8.5"/><circle cx="4.3" cy="12" r="1.8"/><circle cx="11.3" cy="10.5" r="1.8"/><path d="M2 2l12 12"/></svg>
+    <span class="lbl">Music</span>
+  </button>
+</div>
 
-<button id="music-btn" title="Toggle music">
-  <span id="music-icon">♪</span> Music
-</button>
+<div id="share-panel" role="dialog" aria-label="Share your tree" hidden>
+  <div class="sp-head">
+    <div>
+      <div class="sp-title">Share your tree</div>
+    </div>
+    <button class="sp-close" id="sp-close" aria-label="Close">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sp-stack" id="sp-stack"></div>
+  <div class="sp-link">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"/></svg>
+    <span id="sp-url"></span>
+  </div>
+  <button id="sp-copy" class="sp-btn">
+    <svg class="ic-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="2"/><path d="M10.5 5.5V4a1.5 1.5 0 00-1.5-1.5H4A1.5 1.5 0 002.5 4v5A1.5 1.5 0 004 10.5h1.5"/></svg>
+    <svg class="ic-done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>
+    <span class="lbl">Copy link</span>
+  </button>
+</div>
 
-<div id="gesture-panel">
+<div id="season-bar" class="glass"></div>
+
+<div id="gesture-panel" class="glass">
   <div class="gp-current">Gesture: <span id="gesture-value">FIST</span></div>
   <div class="gp-legend">
     ✊ Fist → Assemble tree &amp; rotate<br>
@@ -276,14 +440,51 @@ const WAVE_THR  = 0.22;
 const DEBOUNCE  = 6;
 const HAND_HIST = 20;
 
-const DIM = 1.5; // overall particle brightness dimmer
+const DIM = 1.5; // overall particle brightness multiplier
 const PHOTO_TREE_SCALE       = 0.18;
 const PHOTO_SCATTER_SCALE    = 1.1;
 const PHOTO_FOCUS_SCALE      = 2.8;
+const MORPH_SECONDS          = 1.9;
+
+// ─── Seasons ─────────────────────────────────────────────────────
+// palette entries: [[r,g,b], weight]
+const SEASONS = {
+  spring: { label:'Spring', icon:'🌸', shape:'canopy', bg:0x070309, ambient:0xffd6e6,
+    palette:[[[1,.4,.66],.4],[[1,.7,.84],.28],[[.9,.25,.55],.24],[[.45,.85,.35],.08]],
+    ground:.04, ornament:'blossom', ornCount:46, fall:'petal', star:false },
+  summer: { label:'Summer', icon:'🌿', shape:'canopy', bg:0x010604, ambient:0xd9ffb8,
+    palette:[[[.22,.82,.32],.45],[[.5,.92,.3],.3],[[.1,.55,.28],.25]],
+    ground:0, ornament:'leaf', ornCount:40, fall:'firefly', star:false },
+  autumn: { label:'Autumn', icon:'🍁', shape:'canopy', bg:0x080302, ambient:0xffcf99,
+    palette:[[[1,.2,.04],.36],[[.85,.05,.03],.28],[[1,.42,.06],.26],[[.95,.68,.12],.10]],
+    ground:.07, ornament:'maple', ornCount:48, fall:'leaf', star:false },
+  winter: { label:'Winter', icon:'❄️', shape:'cone', bg:0x000106, ambient:0xffefc0,
+    palette:[[[1,.88,.18],.6],[[.18,.85,.3],.2],[[1,.18,.18],.2]],
+    ground:0, ornament:'ball', ornCount:55, fall:'snow', star:true },
+};
+const SEASON_ORDER = ['spring','summer','autumn','winter'];
+const SEASON_MONTHS = { spring:'March – May', summer:'June – August', autumn:'September – November', winter:'December – February' };
+const TRUNK_COL = [.5,.26,.12];
+
+function seasonFromDate(d = new Date()) {
+  const m = d.getMonth();
+  if (m>=2 && m<=4) return 'spring';
+  if (m>=5 && m<=7) return 'summer';
+  if (m>=8 && m<=10) return 'autumn';
+  return 'winter';
+}
+
+function rnd(a,b) { return a + Math.random()*(b-a); }
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+function pickPalette(pal) {
+  let r = Math.random();
+  for (const [c,w] of pal) { if ((r -= w) <= 0) return c; }
+  return pal[pal.length-1][0];
+}
 
 // ─── Renderer / Scene / Camera ────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ReinhardToneMapping;
 renderer.toneMappingExposure = 0.7;
@@ -296,7 +497,6 @@ const cam = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 200);
 cam.position.set(0, 1.2, 9);
 cam.lookAt(0, 0.8, 0);
 
-// ─── Bloom (toned down — only bright highlights glow) ─────────
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, cam));
 const bloom = new UnrealBloomPass(
@@ -307,24 +507,133 @@ const bloom = new UnrealBloomPass(
 );
 composer.addPass(bloom);
 
+const TREE_DROP = 1.1; // lowers the tree so it sits in the middle of the screen
 const grp = new THREE.Group();
+grp.position.y = -TREE_DROP;
 scene.add(grp);
 
-// ─── Shared glow texture (star / dust) ─────────────────────────
-function glowTex() {
+// ─── Textures ────────────────────────────────────────────────────
+function canvasTex(w, h, draw, srgb = true) {
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const gr = g.createRadialGradient(32,32,0,32,32,32);
-  gr.addColorStop(0,   'rgba(255,255,255,1)');
-  gr.addColorStop(.15, 'rgba(255,255,255,.9)');
-  gr.addColorStop(.5,  'rgba(255,255,255,.25)');
-  gr.addColorStop(1,   'rgba(255,255,255,0)');
-  g.fillStyle = gr; g.fillRect(0,0,64,64);
-  return new THREE.CanvasTexture(c);
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const tex = new THREE.CanvasTexture(c);
+  if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-// ─── Position generators ────────────────────────────────────────
+function glowTex() {
+  return canvasTex(64, 64, g => {
+    const gr = g.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,   'rgba(255,255,255,1)');
+    gr.addColorStop(.15, 'rgba(255,255,255,.9)');
+    gr.addColorStop(.5,  'rgba(255,255,255,.25)');
+    gr.addColorStop(1,   'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0,0,64,64);
+  }, false);
+}
+
+function makeOrnamentTex(hexColor) {
+  return canvasTex(64, 64, ctx => {
+    const gr = ctx.createRadialGradient(22,20,2,32,32,28);
+    gr.addColorStop(0,   'rgba(255,255,255,0.95)');
+    gr.addColorStop(0.18, hexColor);
+    gr.addColorStop(1,   'rgba(0,0,0,0.55)');
+    ctx.beginPath(); ctx.arc(32,32,28,0,Math.PI*2);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.fillStyle = 'rgba(200,200,200,0.9)';
+    ctx.fillRect(29,3,6,7);
+  }, false);
+}
+
+function makeSnowflakeTex() {
+  return canvasTex(64, 64, ctx => {
+    ctx.strokeStyle = 'rgba(220,240,255,0.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let i=0;i<6;i++) {
+      const a = (i*Math.PI)/3;
+      ctx.beginPath(); ctx.moveTo(32,32);
+      ctx.lineTo(32+Math.cos(a)*26, 32+Math.sin(a)*26); ctx.stroke();
+      for (const j of [0.4,0.7]) {
+        const bx=32+Math.cos(a)*26*j, by=32+Math.sin(a)*26*j;
+        ctx.beginPath();
+        ctx.moveTo(bx+Math.cos(a+Math.PI/2)*8, by+Math.sin(a+Math.PI/2)*8);
+        ctx.lineTo(bx-Math.cos(a+Math.PI/2)*8, by-Math.sin(a+Math.PI/2)*8);
+        ctx.stroke();
+      }
+    }
+  }, false);
+}
+
+function makeMapleTex(color, dark) {
+  return canvasTex(64, 64, ctx => {
+    const cx = 32, cy = 30, R = 25;
+    ctx.beginPath();
+    for (let k=0;k<=240;k++) {
+      const th = k/240*Math.PI*2;               // 0 = up, clockwise
+      let r = 0.5 + 0.5*Math.pow(Math.abs(Math.cos(2.5*th)), 0.7);
+      r *= 1 + 0.07*Math.sin(th*26);            // serrated edge
+      r *= 1 - 0.35*Math.pow(Math.max(0, -Math.cos(th)), 6); // shallow notch at the stem
+      const x = cx + Math.sin(th)*R*r, y = cy - Math.cos(th)*R*r;
+      k===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    const gr = ctx.createRadialGradient(cx,cy,2,cx,cy,R);
+    gr.addColorStop(0, color); gr.addColorStop(1, dark);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,230,180,0.45)'; ctx.lineWidth = 1.2;
+    for (let k=0;k<5;k++) {
+      const th = k*Math.PI*2/5;
+      ctx.beginPath(); ctx.moveTo(cx,cy+4);
+      ctx.lineTo(cx+Math.sin(th)*R*.85, cy-Math.cos(th)*R*.85); ctx.stroke();
+    }
+    ctx.strokeStyle = dark; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx,cy+4); ctx.lineTo(cx+2,62); ctx.stroke();
+  });
+}
+
+function makePetalTex(color) {
+  return canvasTex(48, 48, ctx => {
+    const gr = ctx.createLinearGradient(24,4,24,44);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, color);
+    ctx.beginPath(); ctx.ellipse(24,25,12,19,0,0,Math.PI*2);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath(); ctx.arc(24,4,5,0,Math.PI*2); ctx.fill();
+  });
+}
+
+function makeBlossomTex(color) {
+  return canvasTex(64, 64, ctx => {
+    for (let k=0;k<5;k++) {
+      const a = k*Math.PI*2/5 - Math.PI/2;
+      const px = 32+Math.cos(a)*13, py = 32+Math.sin(a)*13;
+      const gr = ctx.createRadialGradient(32,32,2,px,py,14);
+      gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, color);
+      ctx.beginPath(); ctx.arc(px,py,12.5,0,Math.PI*2);
+      ctx.fillStyle = gr; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(32,32,5,0,Math.PI*2);
+    ctx.fillStyle = '#ffd36b'; ctx.fill();
+  });
+}
+
+function makeLeafTex(color, dark) {
+  return canvasTex(64, 64, ctx => {
+    ctx.translate(32,32); ctx.rotate(-0.5);
+    ctx.beginPath();
+    ctx.moveTo(0,-27);
+    ctx.bezierCurveTo(17,-14, 15,12, 0,25);
+    ctx.bezierCurveTo(-15,12, -17,-14, 0,-27);
+    const gr = ctx.createLinearGradient(-14,0,14,0);
+    gr.addColorStop(0, dark); gr.addColorStop(.5, color); gr.addColorStop(1, dark);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,220,0.4)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(0,30); ctx.stroke();
+  });
+}
+
+// ─── Tree shapes ─────────────────────────────────────────────────
+// Winter: cone
 function conePos(radiusFactorMin, radiusFactorMax) {
   const u = Math.random();
   const y = u*TREE_H - TREE_H*0.05;
@@ -333,13 +642,7 @@ function conePos(radiusFactorMin, radiusFactorMax) {
   const a = Math.random()*Math.PI*2;
   return new THREE.Vector3(r*Math.cos(a), y, r*Math.sin(a));
 }
-function scatterPos() {
-  const phi = Math.acos(2*Math.random()-1);
-  const a = Math.random()*Math.PI*2;
-  const r = 3.5 + Math.random()*SCAT_R;
-  return new THREE.Vector3(r*Math.sin(phi)*Math.cos(a), r*Math.sin(phi)*Math.sin(a)*.55, r*Math.cos(phi));
-}
-function buildParticleTreePos() {
+function coneParticlePos() {
   const u = Math.random();
   const y = u*TREE_H - TREE_H*0.05;
   const maxR = TREE_R * Math.pow(1-u, 1.3);
@@ -349,33 +652,113 @@ function buildParticleTreePos() {
   return new THREE.Vector3(r*Math.cos(a), y, r*Math.sin(a));
 }
 
+// Spring / summer / autumn: trunk + branches + bumpy canopy of leaf particles
+const GROUND_Y  = -0.25;
+const TRUNK_TOP = 2.3;
+const CANOPY_BLOBS = [
+  { c:[ 0.0, 2.7, 0.0], r:[1.6,1.1,1.6] },
+  { c:[ 1.3, 2.4, 0.3], r:[.95,.85,.95] },
+  { c:[-1.3, 2.5,-0.2], r:[.95,.85,.95] },
+  { c:[ 0.4, 3.4, 0.6], r:[.9,.8,.9] },
+  { c:[-0.5, 3.3,-0.6], r:[.9,.8,.9] },
+  { c:[ 0.2, 2.3, 1.2], r:[.85,.75,.85] },
+  { c:[-0.2, 2.4,-1.3], r:[.85,.75,.85] },
+  { c:[ 0.9, 3.0,-0.9], r:[.8,.75,.8] },
+  { c:[-0.9, 2.9, 0.9], r:[.8,.75,.8] },
+];
+const BLOB_W = CANOPY_BLOBS.map(b => b.r[0]*b.r[1]*b.r[2]);
+const BLOB_WSUM = BLOB_W.reduce((a,b)=>a+b, 0);
+function pickBlob() {
+  let r = Math.random()*BLOB_WSUM;
+  for (let i=0;i<CANOPY_BLOBS.length;i++) { if ((r -= BLOB_W[i]) <= 0) return CANOPY_BLOBS[i]; }
+  return CANOPY_BLOBS[0];
+}
+const BRANCHES = CANOPY_BLOBS.slice(1).map((b, i) => ({
+  start: new THREE.Vector3(0, 1.25 + (i%4)*0.25, 0),
+  end:   new THREE.Vector3(b.c[0]*0.85, b.c[1]-0.15, b.c[2]*0.85),
+}));
+
+function canopyPos(kMin = 0, kMax = 1, bias = 0.45) {
+  const b = pickBlob();
+  const u = Math.random()*2-1, a = Math.random()*Math.PI*2, s = Math.sqrt(1-u*u);
+  const k = kMin + (kMax-kMin)*Math.pow(Math.random(), bias);
+  return new THREE.Vector3(
+    b.c[0] + b.r[0]*s*Math.cos(a)*k,
+    b.c[1] + b.r[1]*u*k,
+    b.c[2] + b.r[2]*s*Math.sin(a)*k,
+  );
+}
+function trunkPos() {
+  const v = Math.random();
+  const y = GROUND_Y + v*(TRUNK_TOP-GROUND_Y);
+  const r = (0.2 - 0.08*v + 0.2*Math.max(0, 1-v/0.12)) * (0.7 + 0.3*Math.sqrt(Math.random()));
+  const a = Math.random()*Math.PI*2;
+  return new THREE.Vector3(r*Math.cos(a) + Math.sin(v*2.2)*0.08, y, r*Math.sin(a));
+}
+function branchPos() {
+  const b = pick(BRANCHES);
+  const t = Math.random();
+  const p = b.start.clone().lerp(b.end, t);
+  p.y += Math.sin(t*Math.PI)*0.22;
+  const r = (0.07*(1-t) + 0.02) * Math.sqrt(Math.random());
+  const a = Math.random()*Math.PI*2, u = Math.random()*2-1, s = Math.sqrt(1-u*u);
+  return p.add(new THREE.Vector3(r*s*Math.cos(a), r*u, r*s*Math.sin(a)));
+}
+function groundPos() {
+  const r = 0.3 + Math.sqrt(Math.random())*1.9;
+  const a = Math.random()*Math.PI*2;
+  return new THREE.Vector3(r*Math.cos(a), GROUND_Y + Math.random()*0.06, r*Math.sin(a));
+}
+
+function buildSeasonTree(name, outPos, outCol) {
+  const s = SEASONS[name];
+  for (let i=0;i<N;i++) {
+    let p, c, b = (.35 + Math.random()*.3) * DIM;
+    if (s.shape === 'cone') {
+      p = coneParticlePos(); c = pickPalette(s.palette);
+    } else {
+      const r = Math.random();
+      if (r < 0.12)                 { p = trunkPos();  c = TRUNK_COL; b *= 0.75; }
+      else if (r < 0.19)            { p = branchPos(); c = TRUNK_COL; b *= 0.75; }
+      else if (r < 0.19 + s.ground) { p = groundPos(); c = pickPalette(s.palette); b *= 0.8; }
+      else                          { p = canopyPos(); c = pickPalette(s.palette); }
+    }
+    outPos[i*3]=p.x; outPos[i*3+1]=p.y; outPos[i*3+2]=p.z;
+    outCol[i*3]=c[0]*b; outCol[i*3+1]=c[1]*b; outCol[i*3+2]=c[2]*b;
+  }
+}
+
+function scatterPos() {
+  const phi = Math.acos(2*Math.random()-1);
+  const a = Math.random()*Math.PI*2;
+  const r = 3.5 + Math.random()*SCAT_R;
+  return new THREE.Vector3(r*Math.sin(phi)*Math.cos(a), r*Math.sin(phi)*Math.sin(a)*.55 + TREE_DROP, r*Math.cos(phi));
+}
+
 // ─── Glowing dust particles (tree / scatter) ──────────────────────
-const treePts = new Float32Array(N*3);
-const scatPts = new Float32Array(N*3);
-const curPts  = new Float32Array(N*3);
-const pSeeds  = new Float32Array(N*3);
-const pCols   = new Float32Array(N*3);
-const PALETTE = [[1,.88,.18],[.18,.85,.3],[1,.18,.18]]; // gold / green / red
+const treeCur  = new Float32Array(N*3);
+const treeFrom = new Float32Array(N*3);
+const treeTo   = new Float32Array(N*3);
+const colFrom  = new Float32Array(N*3);
+const colTo    = new Float32Array(N*3);
+const scatPts  = new Float32Array(N*3);
+const curPts   = new Float32Array(N*3);
+const pSeeds   = new Float32Array(N*3);
+const pCols    = new Float32Array(N*3);
 
 for (let i=0;i<N;i++) {
-  const tp = buildParticleTreePos();
   const sp = scatterPos();
-  treePts[i*3]=tp.x; treePts[i*3+1]=tp.y; treePts[i*3+2]=tp.z;
   scatPts[i*3]=sp.x; scatPts[i*3+1]=sp.y; scatPts[i*3+2]=sp.z;
   pSeeds[i*3]=Math.random()*Math.PI*2;
   pSeeds[i*3+1]=Math.random()*Math.PI*2;
   pSeeds[i*3+2]=Math.random()*Math.PI*2;
-  const rc = Math.random();
-  const pal = rc<.6 ? PALETTE[0] : rc<.8 ? PALETTE[1] : PALETTE[2];
-  const b = (.35 + Math.random()*.3) * DIM;
-  pCols[i*3]=pal[0]*b; pCols[i*3+1]=pal[1]*b; pCols[i*3+2]=pal[2]*b;
 }
-curPts.set(treePts);
 
 const pGeo = new THREE.BufferGeometry();
 const pPosA = new THREE.BufferAttribute(curPts, 3);
+const pColA = new THREE.BufferAttribute(pCols, 3);
 pGeo.setAttribute('position', pPosA);
-pGeo.setAttribute('color', new THREE.BufferAttribute(pCols, 3));
+pGeo.setAttribute('color', pColA);
 const PARTICLE_SIZE_TREE = 0.11;
 const PARTICLE_SIZE_SCATTER = 0.19;
 const pMat = new THREE.PointsMaterial({
@@ -399,13 +782,14 @@ for (let i=0;i<AM;i++) {
 }
 const aposA = new THREE.BufferAttribute(abase.slice(),3);
 ageo.setAttribute('position', aposA);
-scene.add(new THREE.Points(ageo, new THREE.PointsMaterial({
+const ambientMat = new THREE.PointsMaterial({
   size:.17, color:0xffefc0, map:glowTex(), transparent:true,
   alphaTest:.01, sizeAttenuation:true, depthWrite:false,
   blending:THREE.AdditiveBlending, opacity:.75,
-})));
+});
+scene.add(new THREE.Points(ageo, ambientMat));
 
-// ─── Star ────────────────────────────────────────────────────────
+// ─── Star (winter only) ──────────────────────────────────────────
 function starShape(n,R,r) {
   const s = new THREE.Shape();
   for (let i=0;i<=n*2;i++) {
@@ -424,74 +808,99 @@ const starGlow = new THREE.Sprite(new THREE.SpriteMaterial({
 }));
 starGlow.scale.set(0.7,0.7,1);
 const starGrp = new THREE.Group();
-starGrp.position.set(0, TREE_H*0.96, 0);
 const STAR_TREE_POS = new THREE.Vector3(0, TREE_H*0.96, 0);
 const STAR_SCAT_POS = scatterPos();
+starGrp.position.copy(STAR_TREE_POS);
 starGrp.add(starMesh); starGrp.add(starGlow);
 grp.add(starGrp);
+let starAmt = 0;
 
-// ─── Christmas ornament balls ─────────────────────────────────────
-function makeOrnamentTex(hexColor) {
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const ctx = c.getContext('2d');
-  const gr = ctx.createRadialGradient(22,20,2,32,32,28);
-  gr.addColorStop(0,   'rgba(255,255,255,0.95)');
-  gr.addColorStop(0.18, hexColor);
-  gr.addColorStop(1,   'rgba(0,0,0,0.55)');
-  ctx.beginPath(); ctx.arc(32,32,28,0,Math.PI*2);
-  ctx.fillStyle = gr; ctx.fill();
-  // cap
-  ctx.fillStyle = 'rgba(200,200,200,0.9)';
-  ctx.fillRect(29,3,6,7);
-  return new THREE.CanvasTexture(c);
-}
-
-function makeSnowflakeTex() {
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const ctx = c.getContext('2d');
-  ctx.strokeStyle = 'rgba(220,240,255,0.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  for (let i=0;i<6;i++) {
-    const a = (i*Math.PI)/3;
-    ctx.beginPath(); ctx.moveTo(32,32);
-    const ex=32+Math.cos(a)*26, ey=32+Math.sin(a)*26;
-    ctx.lineTo(ex,ey); ctx.stroke();
-    for (const j of [0.4,0.7]) {
-      const bx=32+Math.cos(a)*26*j, by=32+Math.sin(a)*26*j;
-      ctx.beginPath();
-      ctx.moveTo(bx+Math.cos(a+Math.PI/2)*8, by+Math.sin(a+Math.PI/2)*8);
-      ctx.lineTo(bx-Math.cos(a+Math.PI/2)*8, by-Math.sin(a+Math.PI/2)*8);
-      ctx.stroke();
-    }
-  }
-  return new THREE.CanvasTexture(c);
-}
-
-const ORN_COLORS = ['#ff2222','#2266ff','#22cc55','#ffcc00','#cc33ff','#ff8833','#ff4499','#44ddff'];
+// ─── Ornaments (balls / blossoms / wish ribbons / lanterns) ──────
+const ORN_TEX = {
+  ball:    ['#ff2222','#2266ff','#22cc55','#ffcc00','#cc33ff','#ff8833','#ff4499','#44ddff'].map(makeOrnamentTex),
+  blossom: ['#ffb7d0','#ffd3e2','#ff8fb8','#ffc4dc'].map(makeBlossomTex),
+  maple:   [['#ff4a12','#7a1004'],['#e8201a','#5e0804'],['#ff8a1a','#8a3004'],['#f2b82a','#8a5004']].map(([c,d]) => makeMapleTex(c,d)),
+  leaf:    [['#5fd85a','#1e6a22'],['#8ee860','#2e7a1a'],['#3cbf5a','#14501e']].map(([c,d]) => makeLeafTex(c,d)),
+};
+const ORN_SIZE   = { ball:[.11,.21], blossom:[.12,.2], maple:[.14,.24], leaf:[.12,.2] };
+const ORN_SWING  = { ball:0, blossom:0, maple:.25, leaf:.18 };
+const ORN_MAX = 55;
 const ORNAMENTS = [];
-const ornTexCache = ORN_COLORS.map(makeOrnamentTex);
-for (let i=0;i<55;i++) {
-  const tex = ornTexCache[i % ornTexCache.length];
-  const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false, opacity:1 });
-  const spr = new THREE.Sprite(mat);
-  const pos = conePos(0.25, 0.98);
-  spr.position.copy(pos);
-  const sz = 0.11 + Math.random()*0.1;
-  spr.scale.set(sz,sz,1);
+for (let i=0;i<ORN_MAX;i++) {
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthWrite:false }));
   grp.add(spr);
-  ORNAMENTS.push({ sprite:spr, basePos:pos.clone(), scatPos:scatterPos(), phase:Math.random()*Math.PI*2, speed:0.28+Math.random()*0.3, sz });
+  ORNAMENTS.push({ sprite:spr, basePos:new THREE.Vector3(), scatPos:scatterPos(),
+    phase:Math.random()*Math.PI*2, speed:0.28+Math.random()*0.3, sz:.15, swing:0, baseRot:0 });
 }
 
-const SNOWFLAKES = [];
-const sfTex = makeSnowflakeTex();
-for (let i=0;i<350;i++) {
-  const op = 0.35 + Math.random()*0.45;
-  const mat = new THREE.SpriteMaterial({ map:sfTex, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:op });
-  const spr = new THREE.Sprite(mat);
-  const sz = 0.07 + Math.random()*0.13;
-  spr.scale.set(sz,sz,1);
-  spr.position.set((Math.random()-.5)*22, (Math.random()-.5)*14, (Math.random()-.5)*10);
-  scene.add(spr);
-  SNOWFLAKES.push({ sprite:spr, vx:(Math.random()-.5)*0.18, vy:-(0.25+Math.random()*0.35), phase:Math.random()*Math.PI*2, rot:(Math.random()-.5)*0.8 });
+function applyOrnaments(name) {
+  const s = SEASONS[name];
+  const tex = ORN_TEX[s.ornament], [a,b] = ORN_SIZE[s.ornament];
+  ORNAMENTS.forEach((o,i) => {
+    const on = i < s.ornCount;
+    o.sprite.visible = on;
+    if (!on) return;
+    o.sprite.material.map = tex[i % tex.length];
+    o.sprite.material.needsUpdate = true;
+    o.sprite.material.rotation = Math.random()*Math.PI*2;
+    o.baseRot = o.sprite.material.rotation;
+    o.swing = ORN_SWING[s.ornament];
+    o.sz = rnd(a,b);
+    o.basePos.copy(s.shape === 'cone' ? conePos(0.25, 0.98) : canopyPos(0.82, 1.0, 1));
+  });
+}
+
+// ─── Falling things (snow / petals / leaves / fireflies) ─────────
+// One InstancedMesh = one draw call. Textures are neutral and tinted per instance.
+const FALL = {
+  snow:    { count:350, tex:makeSnowflakeTex(), additive:true, colors:['#ffffff'],
+             size:[.07,.2], vy:[.25,.6], vx:[-.09,.09], sway:.04, spin:.4, op:[.35,.8] },
+  petal:   { count:200, tex:makePetalTex('#d8d8d8'), additive:false, colors:['#ffb3cd','#ff9cc0','#ffd0e0'],
+             size:[.07,.13], vy:[.16,.38], vx:[.05,.25], sway:.3, spin:1.5, op:[1,1], tumble:true },
+  leaf:    { count:150, tex:makeMapleTex('#ffffff','#9a9a9a'), additive:false, colors:['#ff5a1a','#e8281a','#ff9a1f','#f2c230'],
+             size:[.1,.19], vy:[.3,.6], vx:[-.05,.15], sway:.45, spin:2.2, op:[1,1], tumble:true },
+  firefly: { count:130, tex:glowTex(), additive:true, colors:['#e4ff8a'],
+             size:[.06,.15], vy:[0,0], vx:[0,0], sway:0, spin:0, op:[.6,1], wander:true },
+};
+const FALL_MAX = 350;
+const fallMat = new THREE.MeshBasicMaterial({ transparent:true, depthWrite:false, side:THREE.DoubleSide });
+const fallMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1), fallMat, FALL_MAX);
+fallMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+fallMesh.frustumCulled = false;
+scene.add(fallMesh);
+const FALL_POOL = [];
+for (let i=0;i<FALL_MAX;i++) {
+  FALL_POOL.push({ pos:new THREE.Vector3(), base:new THREE.Vector3(), col:new THREE.Color(),
+    vx:0, vy:0, phase:0, spin:0, rx:0, ry:0, rz:0, sz:.1, op:1 });
+  fallMesh.setColorAt(i, new THREE.Color(1,1,1));
+}
+const fallDummy = new THREE.Object3D();
+const tmpCol = new THREE.Color();
+let fallCfg = FALL.snow;
+
+function applyFall(name) {
+  const cfg = FALL[SEASONS[name].fall];
+  fallCfg = cfg;
+  fallMat.map = cfg.tex;
+  fallMat.blending = cfg.additive ? THREE.AdditiveBlending : THREE.NormalBlending;
+  fallMat.needsUpdate = true;
+  fallMesh.count = cfg.count;
+  for (let i=0;i<cfg.count;i++) {
+    const f = FALL_POOL[i];
+    f.col.set(pick(cfg.colors));
+    f.sz = rnd(...cfg.size); f.op = rnd(...cfg.op);
+    f.vx = rnd(...cfg.vx); f.vy = -rnd(...cfg.vy);
+    f.spin = (Math.random()-.5)*2*cfg.spin;
+    f.phase = Math.random()*Math.PI*2;
+    f.rx = rnd(.8, 2.6) * (Math.random()<.5 ? -1 : 1);
+    f.ry = rnd(.5, 1.8);
+    f.rz = Math.random()*Math.PI*2;
+    if (cfg.wander) f.pos.set((Math.random()-.5)*16, rnd(-1.5, 6), (Math.random()-.5)*8);
+    else            f.pos.set((Math.random()-.5)*22, (Math.random()-.5)*14, (Math.random()-.5)*10);
+    f.base.copy(f.pos);
+    fallMesh.setColorAt(i, tmpCol.copy(f.col).multiplyScalar(f.op));
+  }
+  fallMesh.instanceColor.needsUpdate = true;
 }
 
 // ─── Rounded photo card (glow border + clipped photo) ────────────
@@ -507,17 +916,15 @@ function makeRoundedPhotoTex(img) {
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const ctx = c.getContext('2d');
-  // Clip & draw photo
   ctx.save();
   roundedRect(ctx, pad, pad, S-pad*2, S-pad*2, r);
   ctx.clip();
-  const srcAr = img.naturalWidth / img.naturalHeight;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   let sx, sy, sw, sh;
-  if (srcAr > 1) { sh = img.naturalHeight; sw = sh; sx = (img.naturalWidth-sw)/2; sy = 0; }
-  else           { sw = img.naturalWidth;  sh = sw; sx = 0; sy = (img.naturalHeight-sh)/2; }
+  if (iw > ih) { sh = ih; sw = sh; sx = (iw-sw)/2; sy = 0; }
+  else         { sw = iw; sh = sw; sx = 0; sy = (ih-sh)/2; }
   ctx.drawImage(img, sx, sy, sw, sh, pad, pad, S-pad*2, S-pad*2);
   ctx.restore();
-  // Glow border on top
   ctx.save();
   ctx.shadowColor = 'rgba(255,200,120,0.95)'; ctx.shadowBlur = 20;
   roundedRect(ctx, pad, pad, S-pad*2, S-pad*2, r);
@@ -530,52 +937,122 @@ function makeRoundedPhotoTex(img) {
 
 // ─── Photos ──────────────────────────────────────────────────────
 const PHOTOS = [];
-let photoCount = 0;
 let TOTAL_PHOTOS = 1; // set dynamically from user upload
 
-// Ring placement: evenly spread angles, scrambled heights, inside tree volume
-function ringTreePos() {
-  const idx = photoCount;
-  const angle = (idx / TOTAL_PHOTOS) * Math.PI * 2;
-  // Scramble height so adjacent-angle photos aren't at same level
-  const hFrac = 0.1 + ((idx * 7) % TOTAL_PHOTOS) / TOTAL_PHOTOS * 0.75;
-  const y = hFrac * TREE_H;
-  const maxR = TREE_R * Math.pow(1 - hFrac, 1.3);
-  const r = maxR * (0.3 + Math.random() * 0.35); // inside tree, not the edge
+// Evenly spread angles, scrambled heights, inside the tree volume
+function photoTreePos(idx, total, rSeed, seasonName) {
+  const angle = (idx / total) * Math.PI * 2;
+  const hFrac = 0.1 + ((idx * 7) % total) / total * 0.75;
+  let y, r;
+  if (SEASONS[seasonName].shape === 'cone') {
+    y = hFrac * TREE_H;
+    r = TREE_R * Math.pow(1 - hFrac, 1.3) * (0.3 + rSeed * 0.35);
+  } else {
+    y = 1.75 + hFrac * 1.9;
+    const dy = (y - 2.75) / 1.55;
+    r = 2.0 * Math.sqrt(Math.max(0, 1 - dy*dy)) * (0.45 + rSeed * 0.3);
+  }
   return new THREE.Vector3(r * Math.cos(angle), y, r * Math.sin(angle));
 }
 
+// Scattered photos sit on a ring around the trunk sized to the viewport,
+// so every one stays on screen (random sphere positions put half behind the camera)
+function photoScatterPos(idx, total) {
+  const R = Math.min(4.2, Math.max(2, Math.tan(Math.PI/6) * cam.aspect * 6));
+  const angle = (idx / total) * Math.PI * 2 + 0.35;
+  const r = R * (0.72 + 0.28 * ((idx * 5) % 3) / 2);
+  const yWorld = -1.2 + (((idx * 7) % total) / Math.max(1, total - 1)) * 4.0;
+  return new THREE.Vector3(r * Math.cos(angle), yWorld + TREE_DROP, r * Math.sin(angle));
+}
+
 function addPhotoSpriteFromTex(tex, aspect) {
-  const tp = ringTreePos();
-  photoCount++;
-  const sp2 = scatterPos();
-  // Photo
+  const idx = PHOTOS.length;
+  const rSeed = Math.random();
+  const tp = photoTreePos(idx, TOTAL_PHOTOS, rSeed, season);
   const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, alphaTest:.02, depthWrite:false, blending:THREE.NormalBlending });
   const sprite = new THREE.Sprite(mat);
   sprite.position.copy(tp);
   sprite.scale.set(PHOTO_TREE_SCALE, PHOTO_TREE_SCALE/aspect, 1);
   grp.add(sprite);
   PHOTOS.push({
-    sprite, treePos: tp, scatterPos: sp2, aspect,
+    sprite, treePos: tp, fromPos: tp.clone(), toPos: tp.clone(), rSeed,
+    scatterPos: photoScatterPos(idx, TOTAL_PHOTOS), aspect,
     phase: Math.random()*Math.PI*2, speed: .22+Math.random()*.25,
     treeScale: PHOTO_TREE_SCALE, scatterScale: PHOTO_SCATTER_SCALE,
   });
 }
 
-// Photos are loaded dynamically from user upload — see showUploadScreen()
+// ─── Season switching (particles morph from one tree into the next) ──
+let season = 'winter';
+let morph = 1;
+let morphMidDone = true;
+const bgFrom = new THREE.Color(), bgTo = new THREE.Color();
+const ambFrom = new THREE.Color(), ambTo = new THREE.Color();
+
+function setSeason(name, instant = false) {
+  if (!SEASONS[name] || (name === season && !instant)) return;
+  season = name;
+  const s = SEASONS[name];
+  buildSeasonTree(name, treeTo, colTo);
+  bgTo.setHex(s.bg); ambTo.setHex(s.ambient);
+  PHOTOS.forEach((p, i) => {
+    p.fromPos.copy(p.treePos);
+    p.toPos.copy(photoTreePos(i, TOTAL_PHOTOS, p.rSeed, name));
+  });
+
+  if (instant) {
+    treeCur.set(treeTo); pCols.set(colTo); pColA.needsUpdate = true;
+    scene.background.copy(bgTo); ambientMat.color.copy(ambTo);
+    PHOTOS.forEach(p => p.treePos.copy(p.toPos));
+    applyOrnaments(name); applyFall(name);
+    starAmt = s.star ? 1 : 0;
+    morph = 1; morphMidDone = true;
+  } else {
+    treeFrom.set(treeCur); colFrom.set(pCols);
+    bgFrom.copy(scene.background); ambFrom.copy(ambientMat.color);
+    morph = 0; morphMidDone = false;
+  }
+  updateSeasonUI();
+}
+
+function easeInOutCubic(x) { return x<.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2; }
+
+function stepMorph(dt) {
+  if (morph >= 1) return;
+  morph = Math.min(1, morph + dt/MORPH_SECONDS);
+  const TAU = Math.PI*2;
+  for (let i=0;i<N*3;i+=3) {
+    // per-particle stagger so the tree regrows organically instead of all at once
+    const local = Math.max(0, Math.min(1, morph*1.5 - (pSeeds[i]/TAU)*0.5));
+    const e = easeInOutCubic(local);
+    treeCur[i]   = treeFrom[i]   + (treeTo[i]  -treeFrom[i])  *e;
+    treeCur[i+1] = treeFrom[i+1] + (treeTo[i+1]-treeFrom[i+1])*e;
+    treeCur[i+2] = treeFrom[i+2] + (treeTo[i+2]-treeFrom[i+2])*e;
+    pCols[i]   = colFrom[i]   + (colTo[i]  -colFrom[i])  *e;
+    pCols[i+1] = colFrom[i+1] + (colTo[i+1]-colFrom[i+1])*e;
+    pCols[i+2] = colFrom[i+2] + (colTo[i+2]-colFrom[i+2])*e;
+  }
+  pColA.needsUpdate = true;
+  const e = easeInOutCubic(morph);
+  scene.background.copy(bgFrom).lerp(bgTo, e);
+  ambientMat.color.copy(ambFrom).lerp(ambTo, e);
+  PHOTOS.forEach(p => p.treePos.lerpVectors(p.fromPos, p.toPos, e));
+  if (!morphMidDone && morph >= 0.5) {
+    applyOrnaments(season); applyFall(season);
+    morphMidDone = true;
+  }
+}
 
 // ─── State machine ───────────────────────────────────────────────
 let state      = 'tree'; // 'tree' | 'scattered' | 'focused'
 let scatAmt    = 0;
 let scatTarget = 0;
 let currentEa  = 0;
-let autoRotY   = 0;
 let waveVel    = 0;
 let rotY       = 0;
 
 function easeOut(t)     { return 1-Math.pow(1-t,3); }
 function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
-function easeInCubic(t) { return t*t*t; }
 function easeOutBack(t) { const c1=1.70158, c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
 
 function setState(s) {
@@ -586,7 +1063,7 @@ function setState(s) {
 }
 
 // ─── Focus (pinch) trajectory animation ──────────────────────────
-let focusAnim = null; // { idx, phase:'in'|'out'|'idle', t, duration, startLocal, endLocal, controlLocal, startScaleX, endScaleX, aspect }
+let focusAnim = null;
 
 function quadBezier(p0,p1,p2,tt) {
   const mt = 1-tt;
@@ -624,8 +1101,7 @@ function startFocusOut() {
   const saved = focusAnim;
   const item = PHOTOS[saved.idx];
   if (!item) return;
-  // Start from the photo's CURRENT actual position/scale (not the target),
-  // so there's no jump if the in-animation hasn't finished yet
+  // Start from the photo's CURRENT position/scale so there's no jump mid-animation
   focusAnim = {
     idx: saved.idx, phase:'out', t:0, duration:0.85,
     startLocal: item.sprite.position.clone(),
@@ -652,7 +1128,6 @@ let gestureHist = [];
 let currentGesture = 'fist';
 let handHist = [];
 let pinchReleased = true;
-let lastDebug = { ext:0, d:0 };
 
 const gestureValueEl = document.getElementById('gesture-value');
 function updateGestureLabel(g) {
@@ -672,13 +1147,10 @@ function rawGesture(lm) {
     fingerExtended(lm,16,13), fingerExtended(lm,20,17),
   ].filter(Boolean).length;
   const d = dist(lm[4], lm[8]);
-  lastDebug = { ext, d };
-  // Open: 3+ fingers clearly out
   if (ext >= 3) return 'open';
-  // Pinch vs fist: in a real pinch the thumb tip is specifically at the INDEX TIP,
-  // so dist(thumb,tip) << dist(thumb,knuckle). In a fist the thumb wraps near
-  // the knuckle, so both distances are similar.
-  const dKnuckle = dist(lm[4], lm[5]); // thumb tip → index MCP (knuckle)
+  // Pinch: thumb tip sits at the index TIP, far from the index knuckle.
+  // Fist: thumb wraps near the knuckle, so both distances are similar.
+  const dKnuckle = dist(lm[4], lm[5]);
   if (d < 0.08 && d < dKnuckle * 0.72) return 'pinch';
   if (ext === 0) return 'fist';
   return 'none';
@@ -747,7 +1219,7 @@ function setupMP() {
     }
 
     const g = rawGesture(lm);
-gestureHist.push(g);
+    gestureHist.push(g);
     if (gestureHist.length>DEBOUNCE) gestureHist.shift();
     if (gestureHist.length===DEBOUNCE && gestureHist.every(x=>x===gestureHist[0]))
       onGesture(gestureHist[0]);
@@ -759,21 +1231,31 @@ gestureHist.push(g);
 
 // ─── Keyboard fallback ─────────────────────────────────────────────
 window.addEventListener('keydown', e => {
+  if (e.target instanceof HTMLInputElement) return;
   if (e.key==='f'||e.key==='F') onGesture('fist');
   else if (e.key==='o'||e.key==='O') onGesture('open');
   else if (e.key==='p'||e.key==='P') onGesture('pinch');
   else if (e.key==='ArrowLeft')  waveVel -= .12;
   else if (e.key==='ArrowRight') waveVel += .12;
+  else if (e.key>='1' && e.key<='4') setSeason(SEASON_ORDER[+e.key-1]);
 });
 
 // ─── Animation loop ─────────────────────────────────────────────────
 const clock = new THREE.Clock();
 let t = 0;
+let viewShift = 0, viewShiftTarget = 0;
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), .05);
   t += dt;
+
+  stepMorph(dt);
+
+  // Upload screen: slide the tree right so it isn't hidden behind the card
+  viewShift += (viewShiftTarget - viewShift) * 0.05;
+  if (Math.abs(viewShift) > 0.0005) cam.setViewOffset(innerWidth, innerHeight, -viewShift*innerWidth, 0, innerWidth, innerHeight);
+  else if (cam.view && cam.view.enabled) cam.clearViewOffset();
 
   scatAmt += (scatTarget - scatAmt) * (scatTarget < scatAmt ? .07 : .025);
   const ea = easeOut(Math.max(0, Math.min(1, scatAmt)));
@@ -784,9 +1266,11 @@ function animate() {
   rotY += waveVel * dt;
   grp.rotation.y = rotY;
 
-  // Star scatters outward with particles
+  // Star (winter only) — shrinks away for other seasons
+  starAmt += ((SEASONS[season].star ? 1 : 0) - starAmt) * 0.06;
+  starGrp.visible = starAmt > 0.01;
+  starGrp.scale.setScalar(Math.max(0.001, starAmt));
   starGrp.position.lerpVectors(STAR_TREE_POS, STAR_SCAT_POS, ea);
-  starMesh.material.opacity = 1;
   const ss = 1+Math.sin(t*2.2)*.15;
   starGlow.scale.set(ss*0.7, ss*0.7, 1);
   starGlow.material.opacity = 0.22;
@@ -795,14 +1279,10 @@ function animate() {
   // Glowing dust particles
   pMat.size = PARTICLE_SIZE_TREE + (PARTICLE_SIZE_SCATTER-PARTICLE_SIZE_TREE)*ea;
   const noise = ea*.055 + .012;
-  for (let i=0;i<N;i++) {
-    const tx=treePts[i*3], ty=treePts[i*3+1], tz=treePts[i*3+2];
-    const sx=scatPts[i*3], sy=scatPts[i*3+1], sz=scatPts[i*3+2];
-    pPosA.setXYZ(i,
-      tx+(sx-tx)*ea + Math.sin(t*.7+pSeeds[i*3])*noise,
-      ty+(sy-ty)*ea + Math.sin(t*.5+pSeeds[i*3+1])*noise,
-      tz+(sz-tz)*ea + Math.cos(t*.6+pSeeds[i*3+2])*noise
-    );
+  for (let i=0;i<N*3;i+=3) {
+    curPts[i]   = treeCur[i]   + (scatPts[i]  -treeCur[i])  *ea + Math.sin(t*.7+pSeeds[i])  *noise;
+    curPts[i+1] = treeCur[i+1] + (scatPts[i+1]-treeCur[i+1])*ea + Math.sin(t*.5+pSeeds[i+1])*noise;
+    curPts[i+2] = treeCur[i+2] + (scatPts[i+2]-treeCur[i+2])*ea + Math.cos(t*.6+pSeeds[i+2])*noise;
   }
   pPosA.needsUpdate = true;
 
@@ -814,7 +1294,7 @@ function animate() {
   }
   aposA.needsUpdate = true;
 
-  // Photos (normal float, skip the one being focus-animated)
+  // Photos (skip the one being focus-animated)
   PHOTOS.forEach((item, i) => {
     if (focusAnim && focusAnim.idx===i) return;
     const tp = item.treePos, sp2 = item.scatterPos;
@@ -827,35 +1307,53 @@ function animate() {
     item.sprite.scale.set(s, s/item.aspect, 1);
   });
 
-  // Ornament balls — scatter outward with particles
+  // Decorations shrink out and regrow while the season changes
+  const swapFade = morph < 1 ? Math.abs(1 - 2*morph) : 1;
+
   ORNAMENTS.forEach(o => {
-    o.sprite.visible = true;
-    o.sprite.material.opacity = 1;
+    if (!o.sprite.visible) return;
     o.sprite.position.set(
       o.basePos.x + (o.scatPos.x - o.basePos.x) * ea,
       o.basePos.y + (o.scatPos.y - o.basePos.y) * ea + Math.sin(t * o.speed + o.phase) * 0.055,
       o.basePos.z + (o.scatPos.z - o.basePos.z) * ea
     );
-    const s = o.sz * (1 + ea * 0.6);
+    const s = o.sz * (1 + ea * 0.6) * swapFade + 0.0001;
     o.sprite.scale.set(s, s, 1);
+    if (o.swing) o.sprite.material.rotation = o.baseRot + Math.sin(t * o.speed * 3 + o.phase) * o.swing;
   });
 
-  // Snowflakes — drift down, loop back to top
-  SNOWFLAKES.forEach(sf => {
-    sf.sprite.position.x += (sf.vx + Math.sin(t * 0.35 + sf.phase) * 0.04) * dt;
-    sf.sprite.position.y += sf.vy * dt;
-    sf.sprite.material.rotation = (sf.sprite.material.rotation || 0) + sf.rot * dt;
-    if (sf.sprite.position.y < -8) {
-      sf.sprite.position.y = 9;
-      sf.sprite.position.x = (Math.random() - 0.5) * 22;
+  fallMat.opacity = swapFade;
+  for (let i=0;i<fallCfg.count;i++) {
+    const f = FALL_POOL[i], p = f.pos;
+    if (fallCfg.wander) {
+      p.set(
+        f.base.x + Math.sin(t*.3 + f.phase)*.7,
+        f.base.y + Math.sin(t*.23 + f.phase*1.7)*.45,
+        f.base.z + Math.cos(t*.27 + f.phase)*.55
+      );
+      const blink = 0.12 + 0.88*Math.pow(Math.max(0, Math.sin(t*1.3 + f.phase*3)), 2);
+      fallMesh.setColorAt(i, tmpCol.copy(f.col).multiplyScalar(f.op * blink));
+    } else {
+      p.x += (f.vx + Math.sin(t*0.6 + f.phase) * fallCfg.sway) * dt;
+      p.y += f.vy * dt;
+      f.rz += f.spin * dt;
+      if (p.y < -8) { p.y = 9; p.x = (Math.random() - 0.5) * 22; }
+      if (p.x > 12) p.x = -12;
     }
-  });
+    fallDummy.position.copy(p);
+    if (fallCfg.tumble) fallDummy.rotation.set(t*f.rx + f.phase, t*f.ry, f.rz);
+    else                fallDummy.rotation.set(0, 0, f.rz);
+    fallDummy.scale.setScalar(f.sz);
+    fallDummy.updateMatrix();
+    fallMesh.setMatrixAt(i, fallDummy.matrix);
+  }
+  fallMesh.instanceMatrix.needsUpdate = true;
+  if (fallCfg.wander) fallMesh.instanceColor.needsUpdate = true;
 
   // Focus trajectory animation
   if (focusAnim) {
     focusAnim.t += dt;
     const tt = Math.min(1, focusAnim.t/focusAnim.duration);
-    // easeOutCubic for both directions — starts fast, no pause
     const posT   = easeOutCubic(tt);
     const scaleT = focusAnim.phase==='in' ? easeOutBack(tt) : easeOutCubic(tt);
     const pos = quadBezier(focusAnim.startLocal, focusAnim.controlLocal, focusAnim.endLocal, posT);
@@ -875,15 +1373,7 @@ function animate() {
     }
   }
 
-  try {
-    composer.render();
-  } catch (err) {
-    console.error('[Render Error]', err);
-    if (String(err).toLowerCase().includes('tainted') || String(err).toLowerCase().includes('security')) {
-      const w = document.getElementById('tex-warning');
-      if (w) w.style.display = 'block';
-    }
-  }
+  composer.render();
 }
 
 window.addEventListener('resize', () => {
@@ -891,12 +1381,40 @@ window.addEventListener('resize', () => {
   cam.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  if (viewShiftTarget) viewShiftTarget = uploadViewShift();
+  PHOTOS.forEach((p, i) => p.scatterPos.copy(photoScatterPos(i, PHOTOS.length)));
 });
+
+// ─── Season switcher UI ─────────────────────────────────────────
+const seasonBar = document.getElementById('season-bar');
+const seasonBtns = {};
+SEASON_ORDER.forEach(k => {
+  const b = document.createElement('button');
+  b.className = 'season-opt';
+  b.title = SEASONS[k].label;
+  b.innerHTML = `<span class="si">${SEASONS[k].icon}</span><span class="sl">${SEASONS[k].label}</span>`;
+  b.addEventListener('click', () => setSeason(k));
+  seasonBar.appendChild(b);
+  seasonBtns[k] = b;
+});
+
+function updateSeasonUI() {
+  document.documentElement.dataset.season = season;
+  for (const k in seasonBtns) seasonBtns[k].classList.toggle('active', k === season);
+  const eyebrow = document.getElementById('season-eyebrow');
+  if (eyebrow) {
+    const now = new Date();
+    eyebrow.textContent = season === seasonFromDate(now)
+      ? `${now.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })} · ${SEASONS[season].label}`
+      : `${SEASONS[season].label} · ${SEASON_MONTHS[season]}`;
+  }
+  if (!sharePanel.hidden) renderSharePanel();
+}
 
 // ─── Music ──────────────────────────────────────────────────────────
 const bgMusic  = document.getElementById('bg-music');
 const musicBtn = document.getElementById('music-btn');
-const musicIcon = document.getElementById('music-icon');
+const musicLbl = musicBtn.querySelector('.lbl');
 let musicPlaying = false;
 
 function setMusic(on) {
@@ -904,77 +1422,53 @@ function setMusic(on) {
     bgMusic.play().then(() => {
       musicPlaying = true;
       musicBtn.classList.remove('muted');
-      musicBtn.lastChild.textContent = ' Music';
+      musicLbl.textContent = 'Music';
     }).catch(() => {
-      // Autoplay blocked (common on first load without user interaction)
+      // Autoplay blocked
       musicPlaying = false;
       musicBtn.classList.add('muted');
-      musicBtn.lastChild.textContent = ' Music';
+      musicLbl.textContent = 'Music';
     });
   } else {
     musicPlaying = false;
     bgMusic.pause();
     musicBtn.classList.add('muted');
-    musicBtn.lastChild.textContent = ' Muted';
+    musicLbl.textContent = 'Muted';
   }
 }
 
 musicBtn.addEventListener('click', () => setMusic(!musicPlaying));
 
-// ─── Init ───────────────────────────────────────────────────────────
+// ─── Init (after photos are in) ─────────────────────────────────────
 async function init() {
+  document.body.classList.remove('pre');
+  setMusic(true);
+
   const hasCam = await startCam();
   if (hasCam) setupMP();
-
-  await new Promise(r => setTimeout(r, 700));
-  const ld = document.getElementById('loading');
-  ld.classList.add('out');
-  setTimeout(() => ld.remove(), 900);
-
-  // Auto-play music (needs user interaction first on some browsers;
-  // we try immediately after the loading screen gesture which counts)
-  setMusic(true);
-  animate();
-
-  // Reveal share button now that photos are loaded
-  document.getElementById('share-btn').style.display = 'flex';
 }
 
 // ─── Share / URL encoding ────────────────────────────────────────
 // Photos are compressed to small JPEGs and stored in the URL hash so the
 // link is entirely self-contained — no server or storage service needed.
 const HASH_PREFIX = '#p=';
-let shareDataUrls = []; // compressed data URLs saved when photos are loaded
+let shareDataUrls = [];
 
-async function compressToDataUrl(source, maxPx = 280, quality = 0.62) {
-  // source can be a File or an HTMLImageElement already loaded
-  return new Promise(resolve => {
-    const process = img => {
-      const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
-      const w = Math.round(img.naturalWidth  * ratio);
-      const h = Math.round(img.naturalHeight * ratio);
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', quality));
-    };
-    if (source instanceof File) {
-      const url = URL.createObjectURL(source);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); process(img); };
-      img.onerror  = () => resolve(null);
-      img.src = url;
-    } else {
-      process(source); // already an HTMLImageElement
-    }
-  });
+async function compressToDataUrl(img, maxPx = 280, quality = 0.62) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const ratio = Math.min(maxPx / iw, maxPx / ih, 1);
+  const w = Math.round(iw * ratio);
+  const h = Math.round(ih * ratio);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', quality);
 }
 
 function buildShareURL() {
-  // Strip the redundant data:image/jpeg;base64, prefix to save ~30 chars each
   const parts = shareDataUrls.map(d => d.replace(/^data:image\/jpeg;base64,/, ''));
   const hash  = HASH_PREFIX + encodeURIComponent(JSON.stringify(parts));
-  return location.origin + location.pathname + hash;
+  return location.origin + location.pathname + '?season=' + season + hash;
 }
 
 function parseSharedPhotos() {
@@ -989,7 +1483,7 @@ function parseSharedPhotos() {
 
 async function loadDataUrls(dataUrls) {
   TOTAL_PHOTOS = dataUrls.length;
-  shareDataUrls = dataUrls; // already compressed — reuse for share URL
+  shareDataUrls = dataUrls;
   for (const dataUrl of dataUrls) {
     await new Promise(resolve => {
       const img = new Image();
@@ -1000,125 +1494,285 @@ async function loadDataUrls(dataUrls) {
   }
 }
 
-// Share button
-const shareBtn = document.getElementById('share-btn');
-shareBtn.addEventListener('click', async () => {
+const shareBtn   = document.getElementById('share-btn');
+const sharePanel = document.getElementById('share-panel');
+const spCopy     = document.getElementById('sp-copy');
+const spCopyLbl  = spCopy.querySelector('.lbl');
+let copyTimer = 0;
+
+function renderSharePanel() {
+  const n = shareDataUrls.length;
+  const stack = document.getElementById('sp-stack');
+  stack.innerHTML = '';
+  const SHOW = 5;
+  shareDataUrls.slice(0, SHOW).forEach(src => {
+    const img = document.createElement('img');
+    img.src = src; img.alt = '';
+    stack.appendChild(img);
+  });
+  if (n > SHOW) {
+    const more = document.createElement('div');
+    more.className = 'more';
+    more.textContent = `+${n - SHOW}`;
+    stack.appendChild(more);
+  }
+  document.getElementById('sp-url').textContent =
+    `${location.host}${location.pathname}?season=${season}#…`;
+}
+
+function openSharePanel() {
+  renderSharePanel();
+  sharePanel.hidden = false;
+  shareBtn.classList.add('active');
+  shareBtn.setAttribute('aria-expanded', 'true');
+}
+function closeSharePanel() {
+  sharePanel.hidden = true;
+  shareBtn.classList.remove('active');
+  shareBtn.setAttribute('aria-expanded', 'false');
+}
+
+shareBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  sharePanel.hidden ? openSharePanel() : closeSharePanel();
+});
+document.getElementById('sp-close').addEventListener('click', closeSharePanel);
+document.addEventListener('click', e => {
+  if (!sharePanel.hidden && !sharePanel.contains(e.target)) closeSharePanel();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSharePanel(); });
+
+spCopy.addEventListener('click', async () => {
   const url = buildShareURL();
   try {
     await navigator.clipboard.writeText(url);
   } catch {
-    // Fallback: select a temp input
     const inp = document.createElement('input');
     inp.value = url; document.body.appendChild(inp);
     inp.select(); document.execCommand('copy'); inp.remove();
   }
-  shareBtn.textContent = '✓ Copied!';
-  shareBtn.classList.add('copied');
-  setTimeout(() => {
-    shareBtn.textContent = '🔗 Share';
-    shareBtn.classList.remove('copied');
+  spCopy.classList.add('done');
+  spCopyLbl.textContent = 'Link copied';
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => {
+    spCopy.classList.remove('done');
+    spCopyLbl.textContent = 'Copy link';
   }, 2200);
 });
 
 // ─── Upload screen ───────────────────────────────────────────────
+function uploadViewShift() {
+  if (innerWidth <= 760) return 0;
+  const card = document.querySelector('.upload-card');
+  const right = card ? card.getBoundingClientRect().right : 0;
+  return Math.min(0.24, right / 2 / innerWidth);
+}
+
 function showUploadScreen() {
-  const MAX      = 15;
-  const screen   = document.getElementById('upload-screen');
+  const MAX       = 15;
+  const screen    = document.getElementById('upload-screen');
   const fileInput = document.getElementById('file-input');
-  const dropZone  = document.getElementById('drop-zone');
-  const thumbRow  = document.getElementById('thumb-row');
+  const grid      = document.getElementById('photo-grid');
+  const counter   = document.getElementById('photo-count');
   const startBtn  = document.getElementById('start-btn');
-  const limitMsg  = document.getElementById('limit-msg');
-  let selectedFiles = [];
+  let items = []; // { src: downscaled canvas, thumb: small data URL, pending, fresh }
+  let warnTimer = 0;
 
-  function showLimit() {
-    limitMsg.style.display = 'block';
-    clearTimeout(showLimit._t);
-    showLimit._t = setTimeout(() => limitMsg.style.display = 'none', 2800);
+  const PLUS = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const CROSS = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+
+  const isPending = () => items.some(it => it.pending);
+
+  function showCount() {
+    counter.classList.remove('warn');
+    counter.textContent = isPending() ? 'Adding photos…'
+      : items.length ? `${items.length} / ${MAX} photos` : `0 / ${MAX}`;
   }
-
-  function addFiles(newFiles) {
-    const images = [...newFiles].filter(f => f.type.startsWith('image/'));
-    const slots  = MAX - selectedFiles.length;
-    if (slots <= 0) { showLimit(); return; }
-    if (images.length > slots) showLimit();
-    selectedFiles = [...selectedFiles, ...images.slice(0, slots)];
-    renderThumbs();
+  function showWarn(msg, ms = 3200) {
+    counter.classList.add('warn');
+    counter.textContent = msg;
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(() => { warnTimer = 0; showCount(); }, ms);
   }
+  const showLimit = () => showWarn(`The tree holds ${MAX} photos — remove one to add more`);
 
-  function removeFile(idx) {
-    URL.revokeObjectURL(thumbRow.children[idx]?.querySelector('img')?.src);
-    selectedFiles.splice(idx, 1);
-    renderThumbs();
-  }
-
-  dropZone.addEventListener('click', () => {
-    if (selectedFiles.length >= MAX) { showLimit(); return; }
+  function openPicker() {
+    if (items.length >= MAX) { showLimit(); return; }
     fileInput.click();
-  });
+  }
+
+  // Decode any picked file as robustly as possible. Returns a downscaled canvas or throws.
+  const isHeic = f => /image\/hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
+  let heicLib = null;
+  function loadHeicLib() {
+    heicLib ??= new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+      sc.onload = () => res(window.heic2any);
+      sc.onerror = () => { heicLib = null; rej(new Error('heic2any failed to load')); };
+      document.head.appendChild(sc);
+    });
+    return heicLib;
+  }
+  function imgFromBlob(blob) {
+    return new Promise(resolve => {
+      const u = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload  = () => { URL.revokeObjectURL(u); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(u); resolve(null); };
+      img.src = u;
+    });
+  }
+  async function decodeFile(file) {
+    try { return await createImageBitmap(file); } catch {}
+    const viaUrl = await imgFromBlob(file);
+    if (viaUrl) return viaUrl;
+    const buf = await file.arrayBuffer();            // throws if the file can't be read at all
+    const head = new TextDecoder('latin1').decode(new Uint8Array(buf.slice(0, 16)));
+    if (/ftyp(hei|hev|mif|msf)/.test(head) || isHeic(file)) {
+      const heic2any = await loadHeicLib();
+      let jpg = await heic2any({ blob: new Blob([buf]), toType: 'image/jpeg', quality: 0.9 });
+      if (Array.isArray(jpg)) jpg = jpg[0];
+      const img = await imgFromBlob(jpg);
+      if (img) return img;
+    }
+    const retry = await imgFromBlob(new Blob([buf], { type: 'image/jpeg' }));
+    if (retry) return retry;
+    throw new Error(`undecodable (type="${file.type}", header=${JSON.stringify(head)})`);
+  }
+  function toCanvas(src, maxPx = 720) {
+    const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    const r = Math.min(1, maxPx / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * r); c.height = Math.round(h * r);
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    if (src.close) src.close();
+    return c;
+  }
+  function makeThumb(canvas) {
+    const S = 160, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const side = Math.min(canvas.width, canvas.height);
+    c.getContext('2d').drawImage(canvas, (canvas.width-side)/2, (canvas.height-side)/2, side, side, 0, 0, S, S);
+    return c.toDataURL('image/jpeg', 0.8);
+  }
+  async function prepare(file) {
+    const canvas = toCanvas(await decodeFile(file));
+    return { src: canvas, thumb: makeThumb(canvas) };
+  }
+
+  async function addFiles(newFiles) {
+    const all = [...newFiles];
+    console.info(`[upload] received ${all.length} file(s):`, all.map(f => `${f.name} | ${f.type || 'no type'} | ${f.size}B`));
+    // only skip things that are clearly not pictures (videos, docs); unknown types still get a decode attempt
+    const files0 = all.filter(f => !f.type || f.type.startsWith('image/') || isHeic(f));
+    if (!files0.length) { showWarn('Those files aren\'t photos'); return; }
+    const slots = MAX - items.length;
+    if (slots <= 0) { showLimit(); return; }
+    const files = files0.slice(0, slots);
+    const batch = files.map(() => ({ pending: true }));
+    items.push(...batch);
+    render();
+
+    const failed = [];
+    let next = 0;
+    async function worker() {
+      while (next < files.length) {
+        const k = next++;
+        let res = null;
+        try { res = await prepare(files[k]); }
+        catch (err) { console.warn(`[upload] could not read ${files[k].name}:`, err); }
+        const it = batch[k];
+        const idx = items.indexOf(it);
+        if (idx === -1) continue;
+        if (res) Object.assign(it, res, { pending: false, fresh: true });
+        else { failed.push(files[k].name); items.splice(idx, 1); }
+        render();
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker()]);
+
+    if (failed.length) showWarn(`Couldn't read ${failed.length}: ${failed.join(', ')}`, 6000);
+    else if (files0.length > slots) showLimit();
+  }
+
+  function removeAt(idx) {
+    items.splice(idx, 1);
+    render();
+  }
+
+  function render() {
+    grid.innerHTML = '';
+    for (let i=0;i<MAX;i++) {
+      const slot = document.createElement('div');
+      const it = items[i];
+      if (it && it.pending) {
+        slot.className = 'slot loading';
+      } else if (it) {
+        slot.className = 'slot filled';
+        const img = document.createElement('img');
+        img.src = it.thumb;
+        img.alt = '';
+        if (it.fresh) { img.className = 'new'; it.fresh = false; }
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.title = 'Remove';
+        del.innerHTML = CROSS;
+        del.addEventListener('click', () => removeAt(i));
+        slot.append(img, del);
+      } else {
+        slot.className = i === items.length ? 'slot add' : 'slot';
+        if (i === items.length) slot.innerHTML = PLUS;
+        slot.addEventListener('click', openPicker);
+      }
+      grid.appendChild(slot);
+    }
+    if (!warnTimer) showCount();
+    startBtn.disabled = items.length === 0 || isPending();
+  }
 
   fileInput.addEventListener('change', e => {
     addFiles(e.target.files);
-    fileInput.value = ''; // reset so same file can be picked again
+    fileInput.value = '';
   });
 
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; screen.classList.add('drag'); });
+  window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; screen.classList.remove('drag'); } });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
     e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    addFiles(e.dataTransfer.files);
+    dragDepth = 0; screen.classList.remove('drag');
+    if (screen.isConnected) addFiles(e.dataTransfer.files);
   });
-
-  function renderThumbs() {
-    thumbRow.innerHTML = '';
-    selectedFiles.forEach((f, i) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'thumb-wrap';
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(f);
-      const del = document.createElement('button');
-      del.className = 'thumb-del';
-      del.textContent = '×';
-      del.addEventListener('click', e => { e.stopPropagation(); removeFile(i); });
-      wrap.append(img, del);
-      thumbRow.appendChild(wrap);
-    });
-    startBtn.disabled = selectedFiles.length === 0;
-  }
 
   startBtn.addEventListener('click', async () => {
-    if (!selectedFiles.length) return;
+    if (!items.length || isPending()) return;
     startBtn.disabled = true;
-    startBtn.textContent = 'Loading…';
+    startBtn.textContent = 'Growing…';
 
-    TOTAL_PHOTOS = selectedFiles.length;
+    TOTAL_PHOTOS = items.length;
     shareDataUrls = [];
-
-    for (const file of selectedFiles) {
-      await new Promise(resolve => {
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = async () => {
-          addPhotoSpriteFromTex(makeRoundedPhotoTex(img), 1);
-          // Compress a small copy for the share URL
-          const compressed = await compressToDataUrl(img);
-          if (compressed) shareDataUrls.push(compressed);
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        img.onerror = resolve;
-        img.src = url;
-      });
+    for (const { src } of items) {
+      addPhotoSpriteFromTex(makeRoundedPhotoTex(src), 1);
+      shareDataUrls.push(await compressToDataUrl(src));
     }
 
+    viewShiftTarget = 0;
     screen.classList.add('out');
-    setTimeout(() => screen.remove(), 450);
+    setTimeout(() => screen.remove(), 650);
     init();
   });
+
+  render();
+  viewShiftTarget = uploadViewShift();
 }
 
-// If opened via a share link, skip upload and load photos from the URL hash
+// ─── Startup ─────────────────────────────────────────────────────
+const urlSeason = new URLSearchParams(location.search).get('season');
+setSeason(SEASONS[urlSeason] ? urlSeason : seasonFromDate(), true);
+animate();
+
 const sharedPhotos = parseSharedPhotos();
 if (sharedPhotos) {
   document.getElementById('upload-screen').remove();

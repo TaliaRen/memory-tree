@@ -2,3 +2,8 @@
 Thumbs.db
 .claude/
 .vite/
+
+# local sample photos (not part of the site)
+/*.jpg
+/*.jpeg
+/*.png
