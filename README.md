@@ -1,40 +1,30 @@
 # Memory Tree 🌳
 
-把你的照片挂在一棵会随季节变化的粒子树上，用手势和它互动。
+Hang your photos on a particle tree that changes with the seasons, and play with it using hand gestures.
 
-**在线体验 → [christmas-memory-five.vercel.app](https://christmas-memory-five.vercel.app/)**
+**Try it → [christmas-memory-five.vercel.app](https://christmas-memory-five.vercel.app/)**
 
-## 怎么玩
+## How to play
 
-1. 打开网页，上传最多 15 张照片（JPG / PNG）
-2. 点 **Grow my tree**，允许使用摄像头
-3. 对着摄像头做手势：
+1. Open the page and add up to 15 photos (JPG / PNG)
+2. Click **Grow my tree** and allow camera access
+3. Use hand gestures in front of your camera:
 
-| 手势 | 效果 |
+| Gesture | Effect |
 | --- | --- |
-| ✊ 握拳 | 聚拢成树并旋转 |
-| 🖐 张开手掌 | 粒子和照片散开 |
-| 👋 挥手 | 旋转场景 |
-| 🤏 捏合 | 随机拉近一张照片 |
+| ✊ Fist | Gather into a tree and rotate |
+| 🖐 Open palm | Scatter particles and photos |
+| 👋 Wave | Spin the scene |
+| 🤏 Pinch | Pull a random photo close |
 
-没有摄像头也可以用键盘：`F` 握拳、`O` 张开、`P` 捏合、`←` `→` 旋转、`1`–`4` 切换季节。
+No camera? Use the keyboard: `F` fist, `O` open, `P` pinch, `←` `→` spin, `1`–`4` switch seasons.
 
-## 功能
+## Features
 
-- **四季切换**：春天樱花、夏天绿叶萤火虫、秋天红枫落叶、冬天圣诞树，默认跟随当前日期
-- **分享链接**：点右上角 Share 复制链接，照片压缩后存在链接里，不经过服务器
-- **背景音乐**：右上角可以开关
+- **Four seasons**: cherry blossoms in spring, green leaves and fireflies in summer, red maples in autumn, a Christmas tree in winter. Starts on today's season.
+- **Share link**: click **Share** to copy a link. Photos are compressed into the link itself, so nothing is uploaded to a server.
+- **Background music**: toggle it in the top-right corner.
 
-## 本地运行
+## Built with
 
-纯静态页面，不需要安装依赖：
-
-```bash
-python3 -m http.server 5173
-```
-
-然后打开 http://localhost:5173
-
-## 技术
-
-Three.js（粒子 + Bloom 后期）· MediaPipe Hands（手势识别）
+Three.js (particles + bloom) · MediaPipe Hands (gesture tracking)
