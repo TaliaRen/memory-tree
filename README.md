@@ -2,7 +2,7 @@
 
 Hang your photos on a particle tree that changes with the seasons, and play with it using hand gestures.
 
-**Try it → [christmas-memory-five.vercel.app](https://christmas-memory-five.vercel.app/)**
+**Try it → [memory-tree-five.vercel.app](https://memory-tree-five.vercel.app/)**
 
 ## How to play
 
